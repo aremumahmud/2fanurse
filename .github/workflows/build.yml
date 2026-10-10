@@ -1,0 +1,45 @@
+name: Build desktop apps
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: {}
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+      - run: flutter pub get
+      - run: flutter config --enable-windows-desktop
+      - run: flutter build windows --release
+      - name: Zip the release folder
+        run: Compress-Archive -Path build/windows/x64/runner/Release/* -DestinationPath NurseDeviceAuth-windows.zip
+      - uses: actions/upload-artifact@v4
+        with:
+          name: NurseDeviceAuth-windows
+          path: NurseDeviceAuth-windows.zip
+
+  macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+      - run: flutter pub get
+      - run: flutter config --enable-macos-desktop
+      - run: flutter build macos --release
+      - name: Build .dmg
+        run: |
+          mkdir -p dist/dmg-staging
+          cp -R "build/macos/Build/Products/Release/nurse_device_auth.app" dist/dmg-staging/
+          ln -s /Applications dist/dmg-staging/Applications
+          hdiutil create -volname "Nurse Device Auth" -srcfolder dist/dmg-staging -ov -format UDZO NurseDeviceAuth.dmg
+      - uses: actions/upload-artifact@v4
+        with:
+          name: NurseDeviceAuth-macos
+          path: NurseDeviceAuth.dmg
