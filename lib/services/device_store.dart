@@ -6,7 +6,13 @@ class DeviceStore {
   DeviceStore._();
   static final instance = DeviceStore._();
 
-  final _storage = const FlutterSecureStorage();
+  // useDataProtectionKeyChain defaults to true, which requires a
+  // keychain-access-groups entitlement tied to a paid Apple Developer Team
+  // ID. This app is ad-hoc/local-signed (no team), so that write fails
+  // silently on macOS unless we fall back to the legacy keychain API.
+  final _storage = const FlutterSecureStorage(
+    mOptions: MacOsOptions(usesDataProtectionKeychain: false),
+  );
 
   static const _secretKey = 'totp_secret';
   static const _labelKey = 'device_label';

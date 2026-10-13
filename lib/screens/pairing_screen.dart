@@ -35,11 +35,26 @@ class _PairingScreenState extends State<PairingScreen> {
     try {
       final result = await PairingApi.pair(payload);
       final device = PairedDevice(secret: result.secret, label: result.label);
-      await DeviceStore.instance.save(device);
+      try {
+        await DeviceStore.instance.save(device);
+      } catch (e, st) {
+        // Pairing succeeded server-side but saving locally failed — report
+        // this distinctly so it isn't mistaken for a pairing/network error.
+        debugPrint('DeviceStore.save failed: $e\n$st');
+        throw Exception('Paired, but could not save the device locally: $e');
+      }
       if (!mounted) return;
       widget.onPaired(device);
-    } catch (e) {
-      setState(() => _error = e.toString());
+    } catch (e, st) {
+      debugPrint('Pairing failed: $e\n$st');
+      if (!mounted) return;
+      setState(() {
+        _error = e.toString();
+        _scannerConsumed = false; // allow re-scanning after an error
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.toString()), backgroundColor: Theme.of(context).colorScheme.error),
+      );
     } finally {
       if (mounted) setState(() => _submitting = false);
     }
